@@ -2,9 +2,10 @@ import numpy as np
 from sklearn.tree import DecisionTreeClassifier, _tree
 
 class DTree():
-    def __init__(self, max_nFeats=1500, criterion='entropy', max_depth=20, ccp_alpha=0.001, randSeed=None, verbose=True):
-        np.random.seed(randSeed)
+    def __init__(self, max_nFeats=1500, criterion='entropy', max_depth=20, ccp_alpha=0.001, randSeed=None, patience=20, verbose=True):
         self.verbose = verbose
+        self.patience = patience
+        np.random.seed(randSeed)
     
         # fringe constraints
         self.max_nFeats = max_nFeats
@@ -15,6 +16,7 @@ class DTree():
         self.criterion = criterion
         self.max_depth = max_depth
         self.ccp_alpha = ccp_alpha
+        self.random_state = randSeed
         
         # dtree
         self.dtree = None
@@ -23,19 +25,19 @@ class DTree():
         
     def __trainInt__(self, data, labels):
         assert len(data) == len(labels)
-        self.dtree = DecisionTreeClassifier(criterion=self.criterion, max_depth=self.max_depth, ccp_alpha=self.ccp_alpha)
+        self.dtree = DecisionTreeClassifier(random_state=self.random_state, criterion=self.criterion, max_depth=self.max_depth, ccp_alpha=self.ccp_alpha)
         self.dtree.fit(data, labels)
     
-    def train(self, trainData, trainLabels, valData, valLabels):        
+    def train(self, trainData, trainLabels, validData, validLabels):        
         self.nFeats = len(trainData[0])
-        assert len(valData[0]) == self.nFeats
+        assert len(validData[0]) == self.nFeats
         
         trainAccBest, valAccBest = None, -1.0
         iter = 0
         while True:
             self.__trainInt__(trainData, trainLabels)
             _, trainAcc = self.predict(trainData, trainLabels, False, False)
-            _, valAcc = self.predict(valData, valLabels, False, False)
+            _, valAcc = self.predict(validData, validLabels, False, False)
             if self.verbose:
                 print('iter {}: {} / {}'.format(str(iter), str(trainAcc), str(valAcc)))
             if valAcc > valAccBest:
@@ -51,11 +53,74 @@ class DTree():
                 if feat in self.fringeFeats: continue
                 id1, id2, op = feat
                 trainData = self.__dataAug__(trainData, id1, id2, op)
-                valData = self.__dataAug__(valData, id1, id2, op)
+                validData = self.__dataAug__(validData, id1, id2, op)
                 self.fringeFeats[feat] = self.nFeats + len(self.fringeFeats)            
             
             if len(self.fringeFeats) == initSize: break
             iter += 1
+        return trainAccBest, valAccBest
+    
+    def __trainInt2__(self, trainData, trainLabels, validData, validLabels):
+        self.dtree = None
+        assert len(trainData) == len(trainLabels)
+        assert len(validData) == len(validLabels)
+        
+        def eval(dt, data, labels):
+            preds = dt.predict(data)
+            return np.sum(np.array(preds)==np.array(labels)) / len(labels)
+        
+        dt0 = DecisionTreeClassifier(random_state=self.random_state, criterion=self.criterion, max_depth=self.max_depth)
+        
+        ccp_alphas = dt0.cost_complexity_pruning_path(trainData, trainLabels).ccp_alphas
+        ccp_alphas = np.array_split(ccp_alphas, min(10, len(ccp_alphas)))
+        ccp_alphas = [x.mean() for x in ccp_alphas]
+        
+        vaccBest = -1.0
+        for ccp_alpha in ccp_alphas:
+            dt = DecisionTreeClassifier(random_state=self.random_state, criterion=self.criterion, max_depth=self.max_depth, ccp_alpha=ccp_alpha)
+            dt.fit(trainData, trainLabels)
+            vacc = eval(dt, validData, validLabels)
+            if vacc > vaccBest:
+                self.dtree = dt
+                self.ccp_alpha = ccp_alpha
+                vaccBest = vacc
+        assert self.dtree is not None
+
+    
+    def train2(self, trainData, trainLabels, validData, validLabels):
+        self.nFeats = len(trainData[0])
+        assert len(validData[0]) == self.nFeats
+        
+        trainAccBest, valAccBest = None, -1.0
+        iter = 0
+        patience = self.patience
+        while True:
+            self.__trainInt2__(trainData, trainLabels, validData, validLabels)
+            _, trainAcc = self.predict(trainData, trainLabels, False, False)
+            _, valAcc = self.predict(validData, validLabels, False, False)
+            if self.verbose:
+                print('iter {}: {} / {}'.format(str(iter), str(trainAcc), str(valAcc)))
+            if valAcc > valAccBest:
+                self.dtreeBest = self.dtree
+                self.fringeFeatsBest = self.fringeFeats.copy()
+                valAccBest = valAcc
+                trainAccBest = trainAcc
+                patience = self.patience
+            if self.nFeats + len(self.fringeFeats) > self.max_nFeats: break
+            
+            initSize = len(self.fringeFeats)
+            featSet = self.__fringeDetect__()
+            for feat in featSet:
+                if feat in self.fringeFeats: continue
+                id1, id2, op = feat
+                trainData = self.__dataAug__(trainData, id1, id2, op)
+                validData = self.__dataAug__(validData, id1, id2, op)
+                self.fringeFeats[feat] = self.nFeats + len(self.fringeFeats)            
+            
+            if len(self.fringeFeats) == initSize: break
+            iter += 1
+            patience -= 1
+            if patience < 0: break
         return trainAccBest, valAccBest
         
         
