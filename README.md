@@ -7,7 +7,19 @@ We train a binary binary decision tree with fringe-features extraction proposed 
 You may also refer to our DATE'19 paper [[3]](#ref3) (written with other contestants) and the [project page](https://po-chun-chien.github.io/projects/5.ML+LS/) for more details.
 
 ## Usage
+Before running the program, please make sure you have the required pip packages installed.
+```
+pip3 install -r requirements.txt
+```
 
+The training and validation data should be in [PLA](https://ultraespresso.di.univr.it/assets/data/espresso/espresso5.pdf) format.
+You can download the contest benchmarks via this [link](https://github.com/iwls2020-lsml-contest/iwls2020-lsml-contest).
+To save the learned binary decision tree model, you can write it into a pickle file with the `--save_model` flag, and/or dump it into a logic circuit in [BLIF](https://people.eecs.berkeley.edu/~alanmi/publications/other/blif.pdf) format with the `--dump_blif` flag.
+Below is an example to run our program.
+You can use the `--help` flag to see a more detailed usage.
+```
+python3 main.py --train_data benchmarks/train/ex00.train.pla --valid_data benchmarks/validation/ex00.valid.pla --save_model ex00_model.pk --dump_blif ex00_model.blif
+```
 
 ## References
 <a class="anchor" id="ref1">[1]</a> G. Pagallo and D. Haussler, “Boolean Feature Discovery in Empirical Learning,” Machine Learning, vol. 5, no. 1, p. 71–99, 1990.
