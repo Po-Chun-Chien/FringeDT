@@ -3,18 +3,18 @@ import pickle as pk
 import numpy as np
 from argparse import ArgumentParser
 from dtree import DTree
-from utils import readPLA, dumpPLA
+from utils import readPLA
 
 
 def getArgs():
     parser = ArgumentParser()
-    parser.add_argument('-td', '--train_data', type=str, default='/home/b04112/Documents/abc2/IWLS2020/testcases/ex00.train.pla')
-    parser.add_argument('-vd', '--valid_data', type=str, default='/home/b04112/Documents/abc2/IWLS2020/testcases/ex00.valid.pla')
+    parser.add_argument('-td', '--train_data', type=str)
+    parser.add_argument('-vd', '--valid_data', type=str)
     parser.add_argument('-rs', '--random_seed', type=int, default=None)
     parser.add_argument('-mf', '--max_num_feats', type=int, default=1500)
     parser.add_argument('-md', '--max_depth', type=int, default=20)
-    parser.add_argument('-cc', '--ccp_alpha', type=float, default=0.001)
-    parser.add_argument('-cr', '--criterion', type=str, default='entropy')
+    parser.add_argument('-cc', '--ccp_alpha', type=float, default=None)
+    parser.add_argument('-cr', '--criterion', type=str, default='entropy', choices=['gini', 'entropy'])
     parser.add_argument('-vb', '--verbose', action='store_true')
     parser.add_argument('-sm', '--save_model', type=str, default=None)
     parser.add_argument('-lm', '--load_model', type=str, default=None)
@@ -39,7 +39,13 @@ if __name__ == '__main__':
         rs, vb = args.random_seed, args.verbose
         dt = DTree(max_nFeats=mf, criterion=cr, max_depth=md, ccp_alpha=cc, randSeed=rs, verbose=vb)
     
-    trnAcc, valAcc = dt.train(trnData, trnLabels, valData, valLabels)
+    if args.ccp_alpha is not None:
+        # train with given ccp_alpha
+        trnAcc, valAcc = dt.train(trnData, trnLabels, valData, valLabels)
+    else:
+        # automatically select the best ccp_alpha based on val. acc.
+        trnAcc, valAcc = dt.train2(trnData, trnLabels, valData, valLabels)
+    
     if args.verbose:
         print('overall results (tra/val acc.): {} / {}\n'.format(str(trnAcc), str(valAcc)))
     
