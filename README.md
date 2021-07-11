@@ -4,7 +4,7 @@ An implementation of binary decision tree with fringe-features extraction.
 ## Introduction
 This repository contains one of the methods we used in the [IWLS 2020](https://iwls20.cade.utah.edu/) Programming Contest.
 We train a binary binary decision tree with fringe-features extraction proposed in [[1]](#ref1)[[2]](#ref2), and convert it into a Boolean logic circuit.
-You may also refer to our DATE'19 paper [[3]](#ref3) (written with other contestants) and the [project page](https://po-chun-chien.github.io/projects/5.ML+LS/) for more details.
+You may also refer to the [contest description](https://github.com/iwls2020-lsml-contest/iwls2020-lsml-contest/blob/main/contest_description.pdf), our DATE'19 paper [[3]](#ref3) (written with other contestants) and the [project page](https://po-chun-chien.github.io/projects/5.ML+LS/) for more details.
 
 ## Usage
 Before running the program, please make sure you have the required pip packages installed.
